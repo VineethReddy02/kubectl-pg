@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
@@ -391,12 +390,9 @@ func TestInotifyOverflow(t *testing.T) {
 
 	errChan := make(chan error, numDirs*numFiles)
 
-	// All events need to be in the inotify queue before pulling events off it to trigger this error.
-	wg := sync.WaitGroup{}
 	for dn := 0; dn < numDirs; dn++ {
 		testSubdir := fmt.Sprintf("%s/%d", testDir, dn)
 
-		wg.Add(1)
 		go func() {
 			for fn := 0; fn < numFiles; fn++ {
 				testFile := fmt.Sprintf("%s/%d", testSubdir, fn)
@@ -413,10 +409,8 @@ func TestInotifyOverflow(t *testing.T) {
 					continue
 				}
 			}
-			wg.Done()
 		}()
 	}
-	wg.Wait()
 
 	creates := 0
 	overflows := 0

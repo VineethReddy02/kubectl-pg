@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -32,18 +31,25 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		color.Green("We have red")
-		fmt.Println("\\e[32mlist called")
+		hiiFlag,_ :=cmd.Flags().GetString("HII")
+		 list(hiiFlag)
+	},
+}
+
+func list(HII string){
+	if(HII=="YES") {
+		fmt.Println(HII)
+		color.Green("We have Green")
 		color.Set(color.FgYellow)
 
 		fmt.Println("Existing text will now be in yellow")
 		fmt.Printf("This one %s\n", "too")
 
 		color.Unset() // Don't forget to unset
-	},
+	}
 }
-
 func init() {
+	listCmd.Flags().StringP("HII","p","NO","SAY HII")
 	rootCmd.AddCommand(listCmd)
 
 	// Here you will define your flags and configuration settings.

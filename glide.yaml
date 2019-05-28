@@ -8,3 +8,6 @@ import:
   version: v0.0.4
 - package: github.com/spf13/viper
   version: v1.4.0
+- package: k8s.io/client-go
+  version: v11.0.0
+- package: k8s.io/apimachinery
