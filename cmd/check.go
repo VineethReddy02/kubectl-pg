@@ -28,7 +28,7 @@ import (
 // checkCmd represents the check command
 var checkCmd = &cobra.Command{
 	Use:   "check",
-	Short: "Check whether postgresql CRD registered.",
+	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("check called")
@@ -53,8 +53,11 @@ func check() {
 	if err != nil {
 		panic(err)
 	}
-	pod, _ := clientset.CoreV1().Pods("default").Get("postgres-operator", metav1.GetOptions{})
-	fmt.Println(pod.Status)
+	pod,err := clientset.CoreV1().Pods("default").Get("postgres-operator-ff9459df6-8mb86", metav1.GetOptions{})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(pod.Status.Phase)
 }
 
 func init() {
