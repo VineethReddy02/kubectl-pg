@@ -18,11 +18,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/spf13/cobra"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	"path/filepath"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"path/filepath"
 )
 
 // checkCmd represents the check command
@@ -31,7 +31,6 @@ var checkCmd = &cobra.Command{
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("check called")
 		check()
 	},
 }
@@ -53,11 +52,23 @@ func check() {
 	if err != nil {
 		panic(err)
 	}
-	pod,err := clientset.CoreV1().Pods("default").Get("postgres-operator-ff9459df6-8mb86", metav1.GetOptions{})
+	deploymentDetails:= clientset.AppsV1().Deployments("")
+	allDeployments,err:= deploymentDetails.List(metav1.ListOptions{})
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(pod.Status.Phase)
+
+	registered:=false
+	for _,d := range allDeployments.Items {
+		if(d.Name=="postgres-operator" && d.Status.ReadyReplicas>=1){
+			fmt.Println("postgresql CRD Successfully Registered.")
+			registered = true
+			break
+		}
+	}
+	if(!registered) {
+			fmt.Println("Make sure Postgres-Operator is running.")
+	}
 }
 
 func init() {
