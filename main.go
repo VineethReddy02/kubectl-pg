@@ -14,7 +14,7 @@
 
 package main
 
-import "kubectl-pg/cmd"
+import "github.com/VineethReddy02/kubectl-pg/cmd"
 
 func main() {
 	cmd.Execute()
