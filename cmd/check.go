@@ -18,12 +18,15 @@ import (
 	"flag"
 	"fmt"
 	"github.com/spf13/cobra"
+	apiextbeta1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	//"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"path/filepath"
 )
+
+const postgresCrdName string = "postgresqls.acid.zalan.do"
 
 // checkCmd represents the check command
 var checkCmd = &cobra.Command{
@@ -35,6 +38,7 @@ var checkCmd = &cobra.Command{
 	},
 }
 
+// check validates postgresql CRD registered or not.
 func check() {
 	var kubeconfig *string
 	if home := homedir.HomeDir(); home != "" {
@@ -48,39 +52,22 @@ func check() {
 	if err != nil {
 		panic(err)
 	}
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		panic(err)
-	}
-	deploymentDetails:= clientset.AppsV1().Deployments("")
-	allDeployments,err:= deploymentDetails.List(metav1.ListOptions{})
-	if err != nil {
+
+	apiexclient, err := apiextbeta1.NewForConfig(config)
+	if(err!=nil){
 		panic(err)
 	}
 
-	registered:=false
-	for _,d := range allDeployments.Items {
-		if(d.Name=="postgres-operator" && d.Status.ReadyReplicas>=1){
-			fmt.Println("postgresql CRD Successfully Registered.")
-			registered = true
-			break
-		}
-	}
-	if(!registered) {
-			fmt.Println("Make sure Postgres-Operator is running.")
+	crdInfo,_:=apiexclient.CustomResourceDefinitions().Get(postgresCrdName,metav1.GetOptions{})
+
+	if(crdInfo.Name == postgresCrdName){
+		fmt.Println("postgresql CRD successfully registered.")
+	} else {
+		fmt.Println("postgresql CRD not registered.")
 	}
 }
 
+
 func init() {
 	rootCmd.AddCommand(checkCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// checkCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// checkCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 
-	"k8s.io/klog"
+	"github.com/golang/glog"
 )
 
 // APIGroupResources is an API group with a mapping of versions to
@@ -99,20 +99,18 @@ func NewDiscoveryRESTMapper(groupResources []*APIGroupResources) meta.RESTMapper
 					scope = meta.RESTScopeRoot
 				}
 
-				// if we have a slash, then this is a subresource and we shouldn't create mappings for those.
-				if strings.Contains(resource.Name, "/") {
+				// this is for legacy resources and servers which don't list singular forms.  For those we must still guess.
+				if len(resource.SingularName) == 0 {
+					versionMapper.Add(gv.WithKind(resource.Kind), scope)
+					// TODO this is producing unsafe guesses that don't actually work, but it matches previous behavior
+					versionMapper.Add(gv.WithKind(resource.Kind+"List"), scope)
 					continue
 				}
 
 				plural := gv.WithResource(resource.Name)
 				singular := gv.WithResource(resource.SingularName)
-				// this is for legacy resources and servers which don't list singular forms.  For those we must still guess.
-				if len(resource.SingularName) == 0 {
-					_, singular = meta.UnsafeGuessKindToResource(gv.WithKind(resource.Kind))
-				}
-
-				versionMapper.AddSpecific(gv.WithKind(strings.ToLower(resource.Kind)), plural, singular, scope)
 				versionMapper.AddSpecific(gv.WithKind(resource.Kind), plural, singular, scope)
+				versionMapper.AddSpecific(gv.WithKind(strings.ToLower(resource.Kind)), plural, singular, scope)
 				// TODO this is producing unsafe guesses that don't actually work, but it matches previous behavior
 				versionMapper.Add(gv.WithKind(resource.Kind+"List"), scope)
 			}
@@ -145,26 +143,27 @@ func NewDiscoveryRESTMapper(groupResources []*APIGroupResources) meta.RESTMapper
 // GetAPIGroupResources uses the provided discovery client to gather
 // discovery information and populate a slice of APIGroupResources.
 func GetAPIGroupResources(cl discovery.DiscoveryInterface) ([]*APIGroupResources, error) {
-	gs, rs, err := cl.ServerGroupsAndResources()
-	if rs == nil || gs == nil {
-		return nil, err
+	apiGroups, err := cl.ServerGroups()
+	if err != nil {
+		if apiGroups == nil || len(apiGroups.Groups) == 0 {
+			return nil, err
+		}
 		// TODO track the errors and update callers to handle partial errors.
 	}
-	rsm := map[string]*metav1.APIResourceList{}
-	for _, r := range rs {
-		rsm[r.GroupVersion] = r
-	}
-
 	var result []*APIGroupResources
-	for _, group := range gs {
+	for _, group := range apiGroups.Groups {
 		groupResources := &APIGroupResources{
-			Group:              *group,
+			Group:              group,
 			VersionedResources: make(map[string][]metav1.APIResource),
 		}
 		for _, version := range group.Versions {
-			resources, ok := rsm[version.GroupVersion]
-			if !ok {
-				continue
+			resources, err := cl.ServerResourcesForGroupVersion(version.GroupVersion)
+			if err != nil {
+				// continue as best we can
+				// TODO track the errors and update callers to handle partial errors.
+				if resources == nil || len(resources.APIResources) == 0 {
+					continue
+				}
 			}
 			groupResources.VersionedResources[version.Version] = resources.APIResources
 		}
@@ -211,7 +210,7 @@ func (d *DeferredDiscoveryRESTMapper) getDelegate() (meta.RESTMapper, error) {
 // Reset resets the internally cached Discovery information and will
 // cause the next mapping request to re-discover.
 func (d *DeferredDiscoveryRESTMapper) Reset() {
-	klog.V(5).Info("Invalidating discovery information")
+	glog.V(5).Info("Invalidating discovery information")
 
 	d.initMu.Lock()
 	defer d.initMu.Unlock()
