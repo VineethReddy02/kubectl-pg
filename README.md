@@ -2,9 +2,9 @@
 
 ### Installtion of kubectl pg plugin
 
-Clone the kubectl pg plugin and build from the source using ```go install``` this will generate kubectl pg plugin's executable in go/bin/kubectl-pg.exe
+Clone the kubectl pg plugin and build from the source using ```go install``` this will generate kubectl pg plugin's executable in ```go/bin/kubectl-pg.exe```
 
-### To list all commands avaialble in kubectl pg 
+### To list all commands avaialble in kubectl pg
 
 ```kubectl pg --help``` (or) ```kubectl pg```
 
