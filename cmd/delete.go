@@ -32,12 +32,12 @@ var deleteCmd = &cobra.Command{
 	Long: `Delete cmd deletes the objects specific to a manifest file or an object provided object-name.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("delete called")
-		deleteByName,_ :=cmd.Flags().GetString("name")
-		deleteByFile,_ :=cmd.Flags().GetString("file")
-		if(deleteByName!="") {
-			delete(deleteByName)
+		name,_ :=cmd.Flags().GetString("name")
+		file,_ :=cmd.Flags().GetString("file")
+		if(name!="") {
+			deleteByName(name)
 		} else {
-			delete(deleteByFile)
+			deleteByFile(file)
 		}
 	},
 }
@@ -48,20 +48,30 @@ func init() {
 	rootCmd.AddCommand(deleteCmd)
 }
 
-func delete(deleteByName string) {
+func deleteByFile(file string) {
 	config:=getConfig()
 	ans,err:=PostgresqlLister.NewForConfig(config)
-	ymlFile,err := ioutil.ReadFile("abc.yaml")
+	ymlFile,err := ioutil.ReadFile(file)
 	if err != nil {
 		log.Printf("%#v\n",err)
 	}
 	decode := scheme.Codecs.UniversalDeserializer().Decode
 	obj,_,err:= decode([]byte(ymlFile),nil, &v1.Postgresql{})
 	if(err!=nil){
-		fmt.Println("vineeth",err)
+		fmt.Println(err)
 	}
 	postgresSql := obj.(*v1.Postgresql)
 	fmt.Println(postgresSql)
 	deleteStatus:=ans.Postgresqls("default").DeleteCollection(&metav1.DeleteOptions{},metav1.ListOptions{})
+	fmt.Println(deleteStatus)
+}
+
+func deleteByName(name string) {
+	config:=getConfig()
+	ans,err:=PostgresqlLister.NewForConfig(config)
+	if err!=nil{
+		panic(err)
+	}
+	deleteStatus:=ans.Postgresqls("default").Delete(name, &metav1.DeleteOptions{})
 	fmt.Println(deleteStatus)
 }
