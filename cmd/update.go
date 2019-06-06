@@ -15,21 +15,47 @@
 package cmd
 
 import (
+	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
+	"log"
 	"fmt"
-
+	v1 "github.com/zalando/postgres-operator/pkg/apis/acid.zalan.do/v1"
+	"io/ioutil"
 	"github.com/spf13/cobra"
+	PostgresqlLister "github.com/zalando/postgres-operator/pkg/generated/clientset/versioned/typed/acid.zalan.do/v1"
 )
 
-// updateCmd represents the update command
+// updateCmd represents kubectl pg update
 var updateCmd = &cobra.Command{
-	Use:   "update",
+	Use:   "update the resource of type postgresql.",
 	Short: "Update cmd to update k8s objects using manifest file.",
 	Long: `Provide the modified manifest file to reflect the changes on the cluster.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("update called")
+		fileName,_:=cmd.Flags().GetString("file")
+		updatePgResources(fileName)
 	},
 }
 
 func init() {
+	updateCmd.Flags().StringP("file","f","","using file")
 	rootCmd.AddCommand(updateCmd)
+}
+
+func updatePgResources(fileName string) {
+
+	config:= getConfig()
+
+	ans,err:=PostgresqlLister.NewForConfig(config)
+	ymlFile,err := ioutil.ReadFile(fileName)
+	if err != nil {
+		log.Printf("%#v\n",err)
+	}
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+	obj,_,err:= decode([]byte(ymlFile),nil, &v1.Postgresql{})
+	if(err!=nil){
+		fmt.Println("vineeth",err)
+	}
+	postgresSql := obj.(*v1.Postgresql)
+	fmt.Println(postgresSql)
+	listPostgresslq,_:=ans.Postgresqls("default").Update(postgresSql)
+	fmt.Println(listPostgresslq.Status)
 }

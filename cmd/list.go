@@ -15,14 +15,20 @@
 package cmd
 
 import (
+	"flag"
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	"path/filepath"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	PostgresqlLister "github.com/zalando/postgres-operator/pkg/generated/clientset/versioned/typed/acid.zalan.do/v1"
 )
 
-// listCmd represents the list command
+// listCmd represents kubectl pg list.
 var listCmd = &cobra.Command{
-	Use:   "list",
+	Use:   "list the resource of type postgresql.",
 	Short: "list cmd list all the resources specific to an object.",
 	Long: `List all the info specific to an objects.`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -43,6 +49,28 @@ func list(HII string){
 
 		color.Unset() // Don't forget to unset
 	}
+
+	var kubeconfig *string
+	if home := homedir.HomeDir(); home != "" {
+		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	} else {
+		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+	}
+	flag.Parse()
+
+	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		panic(err)
+	}
+	template := "%-32s%-8s%-8s%-8s\n"
+	fmt.Printf(template,"NAME","READY","STATUS", "AGE")
+	ans,err:=PostgresqlLister.NewForConfig(config)
+	listPostgresslq,_:=ans.Postgresqls("").List(metav1.ListOptions{})
+	fmt.Println(listPostgresslq)
+	for _,pgObjs := range listPostgresslq.Items {
+		fmt.Printf(template,pgObjs.Name,pgObjs.Status, pgObjs.Namespace, pgObjs.CreationTimestamp)
+	}
+
 }
 func init() {
 	listCmd.Flags().StringP("HII","p","NO","SAY HII")
